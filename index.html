@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Laudo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#15171a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Laudo">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+/* =========================================================
+   CRONOLAUDO v0.1 — pace setter discreto para laudo de TC
+   Estrutura: CSS → HTML → JS (config, estado, render, ações)
+   ========================================================= */
+:root{
+  --texto:#f1f1ee;
+  --texto-suave:rgba(241,241,238,.55);
+  --linha:rgba(241,241,238,.14);
+  --bg:#15171a;                 /* sobrescrito pelo JS conforme a etapa */
+  --botao:rgba(255,255,255,.10);
+  --botao-forte:rgba(255,255,255,.17);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+body{
+  background:var(--bg);
+  color:var(--texto);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  -webkit-user-select:none;user-select:none;
+  touch-action:manipulation;
+  overscroll-behavior:none;
+  transition:background-color 2s ease;       /* troca suave, sem chamar atenção */
+}
+@media (prefers-reduced-motion:reduce){ body{transition:none;} }
+
+.tela{
+  position:fixed;inset:0;display:none;flex-direction:column;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 18px calc(env(safe-area-inset-bottom,0px) + 18px);
+}
+.tela.ativa{display:flex;}
+button{
+  font:inherit;color:inherit;background:var(--botao);border:0;border-radius:18px;
+  padding:0 18px;min-height:56px;cursor:pointer;
+}
+button:active{background:var(--botao-forte);}
+button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
+
+/* ---------- barra superior ---------- */
+.topo{display:flex;justify-content:space-between;align-items:center;min-height:44px;font-size:14px;color:var(--texto-suave);}
+.topo button{min-height:44px;min-width:44px;padding:0 12px;font-size:20px;background:transparent;}
+#wake{font-size:13px;}
+
+/* ---------- tela de repouso ---------- */
+#repouso .contador{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
+#repouso .rotulo{font-size:15px;color:var(--texto-suave);letter-spacing:.04em;}
+.contador-linha{display:flex;align-items:center;gap:14px;}
+#numero{font-size:min(36vw,28vh);font-weight:300;line-height:1;min-width:2ch;text-align:center;font-variant-numeric:tabular-nums;}
+.contador-linha button{width:68px;min-height:68px;font-size:32px;border-radius:50%;padding:0;}
+#snack{min-height:104px;margin-bottom:12px;}
+#snack .caixa{background:var(--botao);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+#snack .cima{display:flex;justify-content:space-between;align-items:center;font-size:15px;}
+#snack .cima button{min-height:40px;font-size:15px;padding:0 14px;}
+#snack .tags{display:flex;gap:8px;flex-wrap:wrap;}
+#snack .tags button{min-height:42px;font-size:14px;padding:0 14px;border-radius:21px;}
+#snack .tags button.on{background:var(--texto);color:#15171a;}
+.grande{min-height:min(34vh,260px);font-size:30px;font-weight:500;border-radius:28px;background:var(--botao-forte);}
+
+/* ---------- tela de exame ---------- */
+#exame .centro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;min-height:0;}
+#tempo{font-size:min(27vw,21vh);font-weight:300;line-height:1;font-variant-numeric:tabular-nums;}
+#tempo.longo{font-size:min(21vw,16vh);}
+#etapa{font-size:min(8vw,5.2vh);font-weight:600;letter-spacing:.02em;min-height:1.2em;}
+#dica{font-size:min(4.4vw,2.6vh);color:var(--texto-suave);min-height:1.3em;padding:0 8px;}
+#barra{display:flex;gap:4px;height:10px;margin:6px 0 16px;}
+#barra.oculta{visibility:hidden;}
+#barra .seg{background:rgba(255,255,255,.14);border-radius:5px;overflow:hidden;}
+#barra .seg i{display:block;height:100%;width:0;background:rgba(255,255,255,.62);}
+.linha-pequena{display:flex;gap:10px;margin-bottom:12px;}
+.linha-pequena button{flex:1;min-height:50px;font-size:16px;border-radius:16px;}
+.linha-pequena button.on{background:var(--texto);color:#15171a;}
+
+/* ---------- configurações ---------- */
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;z-index:10;}
+#sheet.aberto{display:flex;}
+#sheet .painel{
+  width:100%;background:#202328;border-radius:24px 24px 0 0;
+  padding:20px 18px calc(env(safe-area-inset-bottom,0px) + 20px);
+  display:flex;flex-direction:column;gap:12px;max-height:88vh;overflow:auto;
+}
+#sheet h2{margin:0 0 4px;font-size:18px;font-weight:600;}
+.opcao{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:16px;min-height:48px;border-bottom:1px solid var(--linha);}
+.opcao input{width:26px;height:26px;accent-color:#8fb4d9;}
+.opcao small{display:block;color:var(--texto-suave);font-size:13px;margin-top:2px;}
+.par{display:flex;gap:10px;}
+.par button{flex:1;font-size:16px;}
+#sheet .info{font-size:13px;color:var(--texto-suave);}
+</style>
+</head>
+<body>
+
+<!-- ===== REPOUSO ===== -->
+<section id="repouso" class="tela ativa">
+  <div class="topo">
+    <span id="wake"></span>
+    <button id="btnConfig" aria-label="Configurações">⚙︎</button>
+  </div>
+  <div class="contador">
+    <div class="rotulo">EXAMES</div>
+    <div class="contador-linha">
+      <button id="btnMenos" aria-label="Diminuir">−</button>
+      <div id="numero" role="button" aria-label="Editar número de exames">0</div>
+      <button id="btnMais" aria-label="Aumentar">+</button>
+    </div>
+  </div>
+  <div id="snack"></div>
+  <button id="btnNovo" class="grande">NOVO EXAME</button>
+</section>
+
+<!-- ===== EXAME ===== -->
+<section id="exame" class="tela">
+  <div class="topo">
+    <span id="exCount"></span>
+    <span id="wake2"></span>
+  </div>
+  <div class="centro">
+    <div id="tempo">00:00</div>
+    <div id="etapa"></div>
+    <div id="dica"></div>
+  </div>
+  <div id="barra"></div>
+  <div class="linha-pequena">
+    <button id="btnPausa">Pausa</button>
+    <button id="btnEtapa">Etapa ›</button>
+    <button id="btnComplexo">Complexo</button>
+  </div>
+  <button id="btnFim" class="grande">FINALIZAR</button>
+</section>
+
+<!-- ===== CONFIGURAÇÕES ===== -->
+<div id="sheet">
+  <div class="painel">
+    <h2>Configurações</h2>
+    <label class="opcao"><span>Contar exame ao finalizar<small>Desligado: só o +/− altera o contador</small></span><input type="checkbox" id="cfgAuto"></label>
+    <label class="opcao"><span>Manter tela acesa<small>Só enquanto o app está aberto</small></span><input type="checkbox" id="cfgWake"></label>
+    <label class="opcao"><span>Bipe na troca de etapa<small>Só com fone. Desligado por padrão</small></span><input type="checkbox" id="cfgBeep"></label>
+    <div class="par"><button id="btnTesteBipe">Testar bipe</button></div>
+    <div class="par"><button id="btnCopiar">Copiar CSV</button><button id="btnCompartilhar">Compartilhar CSV</button></div>
+    <div class="par"><button id="btnPeriodo">Novo período</button><button id="btnFechar">Fechar</button></div>
+    <div class="info" id="infoRegistros"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   1. CONFIGURAÇÃO — edite aqui os protocolos (sem mexer no resto)
+   ini = minuto em que a etapa começa. alvoMin = fim do alvo.
+   Depois do alvo: tela neutra, mostra só "18 min", "19 min"...
+   ========================================================= */
+const PROTOCOLOS = {
+  "tc-torax": {
+    nome: "TC Tórax",
+    alvoMin: 18,
+    etapas: [
+      { ini: 0,  nome: "CONTEXTO",             dica: "indicação · prévios · pergunta clínica",                   cor: "#26374f" },
+      { ini: 1,  nome: "PULMÕES",              dica: "achados principais · medir o relevante",                   cor: "#1d4b4b" },
+      { ini: 7,  nome: "MEDIASTINO",           dica: "linfonodos · coração · aorta · AP · esôfago · pleura",     cor: "#3a4a28" },
+      { ini: 10, nome: "OSSOS + ABDOME SUP.",  dica: "busca sistemática de incidentais",                         cor: "#473a5c" },
+      { ini: 12, nome: "COMPARAÇÃO + MEDIDAS", dica: "só o que muda interpretação ou conduta",                   cor: "#5a4a26" },
+      { ini: 15, nome: "CONCLUSÃO",            dica: "sintetizar · hierarquizar",                                cor: "#244d6b" },
+      { ini: 17, nome: "QUALITY CHECK",        dica: "lateralidade · medidas · achados esquecidos · coerência",  cor: "#5a2e4c" }
+    ]
+  }
+};
+const COR_REPOUSO = "#15171a";
+const COR_NEUTRA  = "#2b2e33";   // após o alvo e no modo Complexo
+const COR_PAUSA   = "#101113";
+const DESFAZER_MS = 7000;        // tempo da janela de desfazer/tags
+
+/* =========================================================
+   2. ESTADO — tudo em localStorage (sobrevive a fechar o Safari)
+   exame.inicio guarda o horário de início; o tempo é sempre
+   calculado como agora − início − pausas (nunca por contagem).
+   ========================================================= */
+const KEY = "cronolaudo.v1";
+function estadoPadrao() {
+  return {
+    contador: 0,
+    periodoId: Date.now(),
+    protocolo: "tc-torax",
+    exame: null,   // {inicio, pausadoEm, pausadoMs, complexo, etapaMin}
+    registros: [], // histórico de exames finalizados
+    cfg: { auto: true, wake: true, beep: false }
+  };
+}
+function carregar() {
+  const base = estadoPadrao();
+  try {
+    const j = JSON.parse(localStorage.getItem(KEY));
+    if (j) return Object.assign(base, j, { cfg: Object.assign(base.cfg, j.cfg || {}) });
+  } catch (e) {}
+  return base;
+}
+let S = carregar();
+function salvar() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+const $ = id => document.getElementById(id);
+const P = () => PROTOCOLOS[S.protocolo];
+
+/* =========================================================
+   3. TEMPO E ETAPAS
+   ========================================================= */
+function decorridoMs(ex) {
+  const ref = ex.pausadoEm != null ? ex.pausadoEm : Date.now();
+  return Math.max(0, ref - ex.inicio - ex.pausadoMs);
+}
+// Etapa pelo relógio; "Etapa ›" manual só pode adiantar, nunca atrasar.
+function indiceEtapa(seg, ex) {
+  const et = P().etapas;
+  let i = 0;
+  for (let k = 0; k < et.length; k++) if (seg >= et[k].ini * 60) i = k;
+  return Math.max(i, ex.etapaMin || 0);
+}
+const mm = s => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+
+/* =========================================================
+   4. TELA ACESA (Wake Lock) — vale só com o app visível;
+   o iOS libera sozinho ao sair do app, sem mexer no Ajustes.
+   ========================================================= */
+let wl = null, wakeEstado = "";
+async function ligarWake() {
+  if (!S.cfg.wake) { wakeEstado = ""; return mostrarWake(); }
+  if (!("wakeLock" in navigator)) { wakeEstado = "sem"; return mostrarWake(); }
+  try {
+    wl = await navigator.wakeLock.request("screen");
+    wl.addEventListener("release", () => { wl = null; wakeEstado = "caiu"; mostrarWake(); });
+    wakeEstado = "ok";
+  } catch (e) { wakeEstado = "falha"; }
+  mostrarWake();
+}
+function mostrarWake() {
+  const txt = wakeEstado === "ok" ? "tela acesa"
+            : wakeEstado === "" ? ""
+            : "⚠ tela pode apagar";
+  $("wake").textContent = txt;
+  $("wake2").textContent = wakeEstado === "ok" || wakeEstado === "" ? "" : txt; // no exame, só avisa se falhar
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") { ligarWake(); tick(true); }
+});
+document.addEventListener("pointerdown", () => { if (!wl && S.cfg.wake) ligarWake(); }, { passive: true });
+
+/* =========================================================
+   5. BIPE (opcional) — <audio> com WAV gerado em memória.
+   Toca só na troca de etapa; nunca ao passar do alvo.
+   ========================================================= */
+let beepEl = null;
+function criarBeep() {
+  const sr = 22050, n = Math.floor(sr * 0.22), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr, env = Math.min(1, i / (sr * .03)) * Math.min(1, (n - i) / (sr * .06));
+    v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * 600 * t) * env * 0.3 * 32767, true);
+  }
+  beepEl = new Audio(URL.createObjectURL(new Blob([buf], { type: "audio/wav" })));
+  beepEl.preload = "auto";
+}
+function liberarAudio() {            // chamado num toque do usuário (exigência do iOS)
+  if (!S.cfg.beep) return;
+  if (!beepEl) criarBeep();
+  beepEl.muted = true;
+  beepEl.play().then(() => { beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false; }).catch(() => { beepEl.muted = false; });
+}
+function tocarBeep() {
+  if (!S.cfg.beep) return;
+  if (!beepEl) criarBeep();
+  try { beepEl.currentTime = 0; beepEl.play().catch(() => {}); } catch (e) {}
+}
+
+/* =========================================================
+   6. RENDER
+   ========================================================= */
+let ultimaChave = "", ultimoIdx = -1, barraPronta = false;
+
+function mostrar(tela) {
+  $("repouso").classList.toggle("ativa", tela === "repouso");
+  $("exame").classList.toggle("ativa", tela === "exame");
+  if (tela === "repouso") { setBg(COR_REPOUSO); renderRepouso(); }
+  else { barraPronta = false; ultimaChave = ""; tick(true); }
+}
+function setBg(cor) {
+  document.documentElement.style.setProperty("--bg", cor);
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", cor);
+}
+function renderRepouso() { $("numero").textContent = S.contador; }
+
+function montarBarra() {
+  const et = P().etapas, alvo = P().alvoMin, barra = $("barra");
+  barra.innerHTML = "";
+  et.forEach((e, i) => {
+    const fim = i + 1 < et.length ? et[i + 1].ini : alvo;
+    const seg = document.createElement("div");
+    seg.className = "seg"; seg.style.flex = String(fim - e.ini);
+    seg.innerHTML = "<i></i>";
+    barra.appendChild(seg);
+  });
+  barraPronta = true;
+}
+
+function tick(forcar) {
+  const ex = S.exame;
+  if (!ex || !$("exame").classList.contains("ativa")) return;
+  if (!barraPronta) montarBarra();
+
+  const ms = decorridoMs(ex), seg = Math.floor(ms / 1000);
+  const alvoSeg = P().alvoMin * 60;
+  const pausado = ex.pausadoEm != null;
+  const apos = seg >= alvoSeg;
+  const neutro = ex.complexo || apos;
+  const idx = indiceEtapa(seg, ex);
+  const et = P().etapas[idx];
+
+  // texto principal: mm:ss até o alvo; só minutos depois (ou em Complexo)
+  const tempoTxt = neutro ? Math.floor(seg / 60) + " min" : mm(seg);
+  const nomeTxt  = pausado ? "PAUSADO" : ex.complexo ? "COMPLEXO" : apos ? "" : et.nome;
+  const dicaTxt  = pausado || neutro ? "" : et.dica;
+  const cor      = pausado ? COR_PAUSA : neutro ? COR_NEUTRA : et.cor;
+
+  const chave = [tempoTxt, nomeTxt, dicaTxt, cor, pausado, ex.complexo, neutro, seg].join("|");
+  if (!forcar && chave === ultimaChave) return;
+  ultimaChave = chave;
+
+  // bipe só na troca de etapa dentro do alvo, sem pausa e fora do modo Complexo
+  if (!pausado && !neutro && ultimoIdx >= 0 && idx !== ultimoIdx) tocarBeep();
+  ultimoIdx = neutro ? -1 : idx;
+
+  $("tempo").textContent = tempoTxt;
+  $("tempo").classList.toggle("longo", tempoTxt.length > 5);
+  $("etapa").textContent = nomeTxt;
+  $("dica").textContent = dicaTxt;
+  $("exCount").textContent = "EXAMES  " + S.contador;
+  setBg(cor);
+
+  $("barra").classList.toggle("oculta", neutro || pausado);
+  const segs = $("barra").children, et0 = P().etapas;
+  for (let i = 0; i < segs.length; i++) {
+    const ini = et0[i].ini * 60, fim = (i + 1 < et0.length ? et0[i + 1].ini : P().alvoMin) * 60;
+    segs[i].firstChild.style.width = Math.max(0, Math.min(1, (seg - ini) / (fim - ini))) * 100 + "%";
+  }
+
+  $("btnPausa").textContent = pausado ? "Retomar" : "Pausa";
+  $("btnComplexo").classList.toggle("on", !!ex.complexo);
+  $("btnEtapa").style.visibility = (neutro || pausado || idx >= P().etapas.length - 1) ? "hidden" : "visible";
+}
+
+/* =========================================================
+   7. AÇÕES
+   ========================================================= */
+let undoInfo = null, snackTimer = null;
+
+function novoExame() {
+  esconderSnack();
+  S.exame = { inicio: Date.now(), pausadoEm: null, pausadoMs: 0, complexo: false, etapaMin: 0 };
+  salvar(); ultimoIdx = 0;
+  mostrar("exame"); ligarWake(); liberarAudio();
+}
+function pausar() {
+  const ex = S.exame; if (!ex) return;
+  if (ex.pausadoEm != null) { ex.pausadoMs += Date.now() - ex.pausadoEm; ex.pausadoEm = null; }
+  else ex.pausadoEm = Date.now();
+  salvar(); tick(true);
+}
+function alternarComplexo() { const ex = S.exame; if (!ex) return; ex.complexo = !ex.complexo; salvar(); tick(true); }
+function avancarEtapa() {
+  const ex = S.exame; if (!ex) return;
+  const seg = Math.floor(decorridoMs(ex) / 1000);
+  ex.etapaMin = Math.min(indiceEtapa(seg, ex) + 1, P().etapas.length - 1);
+  ultimoIdx = ex.etapaMin;            // avanço manual não gera bipe
+  salvar(); tick(true);
+}
+function finalizar() {
+  const ex = S.exame; if (!ex) return;
+  const agora = Date.now();
+  const pausadoMs = ex.pausadoMs + (ex.pausadoEm != null ? agora - ex.pausadoEm : 0);
+  const rec = {
+    id: agora, periodoId: S.periodoId, protocolo: S.protocolo,
+    inicio: ex.inicio, fim: agora, durMs: decorridoMs(ex), pausadoMs,
+    complexo: !!ex.complexo, complexidade: ex.complexo ? "complexo" : "", qc: false,
+    contou: !!S.cfg.auto
+  };
+  S.registros.push(rec);
+  if (S.cfg.auto) S.contador += 1;
+  undoInfo = { id: rec.id, etapaMin: ex.etapaMin || 0 };
+  S.exame = null; salvar();
+  mostrar("repouso");
+  mostrarSnack(rec);
+}
+function desfazer() {
+  if (!undoInfo) return;
+  const i = S.registros.findIndex(r => r.id === undoInfo.id);
+  if (i < 0) return;
+  const rec = S.registros[i];
+  S.registros.splice(i, 1);
+  if (rec.contou) S.contador = Math.max(0, S.contador - 1);
+  // retoma como se nunca tivesse parado: o tempo continua de onde estava
+  S.exame = { inicio: Date.now() - rec.durMs - rec.pausadoMs, pausadoEm: null, pausadoMs: rec.pausadoMs,
+              complexo: rec.complexo, etapaMin: undoInfo.etapaMin };
+  undoInfo = null; esconderSnack(); salvar(); ultimoIdx = -1;
+  mostrar("exame"); ligarWake();
+}
+
+/* ---- janela de desfazer + tags opcionais ---- */
+function mostrarSnack(rec) {
+  const box = $("snack");
+  box.innerHTML =
+    '<div class="caixa"><div class="cima"><span>Finalizado · ' + mm(Math.floor(rec.durMs / 1000)) +
+    '</span><button id="sDesfazer">Desfazer</button></div><div class="tags">' +
+    ["simples", "intermediário", "complexo"].map(t => '<button data-c="' + t + '">' + t[0].toUpperCase() + t.slice(1) + '</button>').join("") +
+    '<button data-qc="1">QC pegou algo</button></div></div>';
+  const tags = box.querySelectorAll("[data-c]"), qc = box.querySelector("[data-qc]");
+  const pinta = () => {
+    tags.forEach(b => b.classList.toggle("on", rec.complexidade === b.dataset.c));
+    qc.classList.toggle("on", rec.qc);
+  };
+  pinta();
+  tags.forEach(b => b.onclick = () => { rec.complexidade = rec.complexidade === b.dataset.c ? "" : b.dataset.c; salvar(); pinta(); });
+  qc.onclick = () => { rec.qc = !rec.qc; salvar(); pinta(); };
+  $("sDesfazer").onclick = desfazer;
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(esconderSnack, DESFAZER_MS);
+}
+function esconderSnack() { clearTimeout(snackTimer); $("snack").innerHTML = ""; undoInfo = null; }
+
+/* ---- contador ---- */
+function ajustar(d) { S.contador = Math.max(0, S.contador + d); salvar(); renderRepouso(); }
+function editarContador() {
+  const v = prompt("Exames no período:", S.contador);
+  if (v === null) return;
+  const n = parseInt(v, 10);
+  if (!isNaN(n) && n >= 0) { S.contador = n; salvar(); renderRepouso(); }
+}
+
+/* ---- CSV ---- */
+function gerarCSV() {
+  const cab = ["periodo", "seq", "inicio", "fim", "duracao_s", "pausa_s", "protocolo", "complexidade", "marcou_complexo", "qc_pegou_algo"];
+  const seq = {};
+  const linhas = S.registros.map(r => {
+    seq[r.periodoId] = (seq[r.periodoId] || 0) + 1;
+    return [new Date(r.periodoId).toISOString(), seq[r.periodoId], new Date(r.inicio).toISOString(), new Date(r.fim).toISOString(),
+            Math.round(r.durMs / 1000), Math.round(r.pausadoMs / 1000), r.protocolo, r.complexidade, r.complexo ? 1 : 0, r.qc ? 1 : 0].join(",");
+  });
+  return [cab.join(",")].concat(linhas).join("\n");
+}
+async function copiarCSV() {
+  const t = gerarCSV();
+  try { await navigator.clipboard.writeText(t); aviso("CSV copiado"); }
+  catch (e) { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); document.execCommand("copy"); a.remove(); aviso("CSV copiado"); }
+}
+async function compartilharCSV() {
+  const t = gerarCSV();
+  if (navigator.share) { try { await navigator.share({ title: "Laudo CSV", text: t }); } catch (e) {} }
+  else copiarCSV();
+}
+function aviso(m) { $("infoRegistros").textContent = m; setTimeout(infoReg, 2000); }
+function infoReg() { $("infoRegistros").textContent = S.registros.length + " exames registrados no total."; }
+
+/* ---- configurações ---- */
+function abrirConfig() {
+  $("cfgAuto").checked = S.cfg.auto; $("cfgWake").checked = S.cfg.wake; $("cfgBeep").checked = S.cfg.beep;
+  infoReg(); $("sheet").classList.add("aberto");
+}
+function novoPeriodo() {
+  if (!confirm("Zerar o contador e começar um novo período? O histórico é mantido.")) return;
+  S.contador = 0; S.periodoId = Date.now(); salvar(); renderRepouso(); $("sheet").classList.remove("aberto");
+}
+
+/* =========================================================
+   8. LIGAÇÃO DOS BOTÕES E INICIALIZAÇÃO
+   ========================================================= */
+$("btnNovo").onclick = novoExame;
+$("btnFim").onclick = finalizar;
+$("btnPausa").onclick = pausar;
+$("btnComplexo").onclick = alternarComplexo;
+$("btnEtapa").onclick = avancarEtapa;
+$("btnMenos").onclick = () => ajustar(-1);
+$("btnMais").onclick = () => ajustar(1);
+$("numero").onclick = editarContador;
+$("btnConfig").onclick = abrirConfig;
+$("btnFechar").onclick = () => $("sheet").classList.remove("aberto");
+$("btnCopiar").onclick = copiarCSV;
+$("btnCompartilhar").onclick = compartilharCSV;
+$("btnPeriodo").onclick = novoPeriodo;
+$("btnTesteBipe").onclick = () => { const b = S.cfg.beep; S.cfg.beep = true; liberarAudio(); setTimeout(() => { tocarBeep(); S.cfg.beep = b; }, 250); };
+$("cfgAuto").onchange = e => { S.cfg.auto = e.target.checked; salvar(); };
+$("cfgWake").onchange = e => { S.cfg.wake = e.target.checked; salvar(); if (e.target.checked) ligarWake(); else { if (wl) wl.release(); wakeEstado = ""; mostrarWake(); } };
+$("cfgBeep").onchange = e => { S.cfg.beep = e.target.checked; salvar(); };
+
+// Duplo toque rápido não deve dar zoom nem selecionar texto
+document.addEventListener("dblclick", e => e.preventDefault());
+
+// Retoma exame em andamento (fechou o Safari, bloqueou o iPhone, etc.)
+if (S.exame) { ultimoIdx = -1; mostrar("exame"); }
+else mostrar("repouso");
+ligarWake();
+setInterval(() => tick(false), 250);
+
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
