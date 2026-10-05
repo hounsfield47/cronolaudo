@@ -13,8 +13,8 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
 /* =========================================================
-   CRONOLAUDO v0.1 — pace setter discreto para laudo de TC
-   Estrutura: CSS → HTML → JS (config, estado, render, ações)
+   CRONOLAUDO v0.2 — pace setter discreto para laudo
+   Estrutura: CSS → HTML → JS (config, estado, tempo, render, ações)
    ========================================================= */
 :root{
   --texto:#f1f1ee;
@@ -27,13 +27,10 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;margin:0;}
 body{
-  background:var(--bg);
-  color:var(--texto);
+  background:var(--bg);color:var(--texto);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  -webkit-user-select:none;user-select:none;
-  touch-action:manipulation;
-  overscroll-behavior:none;
-  transition:background-color 2s ease;       /* troca suave, sem chamar atenção */
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;overscroll-behavior:none;
+  transition:background-color 2s ease;
 }
 @media (prefers-reduced-motion:reduce){ body{transition:none;} }
 
@@ -42,19 +39,18 @@ body{
   padding:calc(env(safe-area-inset-top,0px) + 14px) 18px calc(env(safe-area-inset-bottom,0px) + 18px);
 }
 .tela.ativa{display:flex;}
-button{
-  font:inherit;color:inherit;background:var(--botao);border:0;border-radius:18px;
-  padding:0 18px;min-height:56px;cursor:pointer;
-}
+button,select{font:inherit;color:inherit;}
+button{background:var(--botao);border:0;border-radius:18px;padding:0 18px;min-height:56px;cursor:pointer;}
 button:active{background:var(--botao-forte);}
-button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
+button:focus-visible,select:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
 
 /* ---------- barra superior ---------- */
 .topo{display:flex;justify-content:space-between;align-items:center;min-height:44px;font-size:14px;color:var(--texto-suave);}
-.topo button{min-height:44px;min-width:44px;padding:0 12px;font-size:20px;background:transparent;}
+.topo .dir{display:flex;gap:4px;align-items:center;}
+.topo button{min-height:44px;min-width:44px;padding:0 12px;font-size:16px;background:transparent;color:var(--texto);}
 #wake{font-size:13px;}
 
-/* ---------- tela de repouso ---------- */
+/* ---------- repouso ---------- */
 #repouso .contador{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
 #repouso .rotulo{font-size:15px;color:var(--texto-suave);letter-spacing:.04em;}
 .contador-linha{display:flex;align-items:center;gap:14px;}
@@ -69,7 +65,7 @@ button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
 #snack .tags button.on{background:var(--texto);color:#15171a;}
 .grande{min-height:min(34vh,260px);font-size:30px;font-weight:500;border-radius:28px;background:var(--botao-forte);}
 
-/* ---------- tela de exame ---------- */
+/* ---------- exame ---------- */
 #exame .centro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;min-height:0;}
 #tempo{font-size:min(27vw,21vh);font-weight:300;line-height:1;font-variant-numeric:tabular-nums;}
 #tempo.longo{font-size:min(21vw,16vh);}
@@ -79,9 +75,36 @@ button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
 #barra.oculta{visibility:hidden;}
 #barra .seg{background:rgba(255,255,255,.14);border-radius:5px;overflow:hidden;}
 #barra .seg i{display:block;height:100%;width:0;background:rgba(255,255,255,.62);}
-.linha-pequena{display:flex;gap:10px;margin-bottom:12px;}
-.linha-pequena button{flex:1;min-height:50px;font-size:16px;border-radius:16px;}
+.linha-pequena{display:flex;gap:8px;margin-bottom:12px;}
+.linha-pequena button{flex:1;min-height:50px;font-size:14px;border-radius:16px;padding:0 6px;}
+.linha-pequena #btnPausa,.linha-pequena #btnComplexo{flex:1.35;}
+.linha-pequena.manual #btnEtapa{flex:1.7;font-size:15px;}
 .linha-pequena button.on{background:var(--texto);color:#15171a;}
+
+/* ---------- histórico ---------- */
+#hist{background:#15171a;}
+#hist .topo{color:var(--texto);font-size:17px;font-weight:600;}
+#hist .topo button{font-size:16px;font-weight:400;padding:0 6px;}
+.ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 8px;}
+.ctrl select{background:var(--botao);border:0;border-radius:12px;min-height:42px;padding:0 10px;font-size:14px;color:var(--texto);max-width:100%;}
+.ctrl select option{color:#000;}
+.ctrl label{display:flex;align-items:center;gap:8px;font-size:14px;min-height:42px;}
+.ctrl input{width:22px;height:22px;accent-color:#8fb4d9;}
+.resumo{font-size:13px;color:var(--texto-suave);margin-bottom:8px;min-height:1.3em;}
+.tabwrap{flex:1;overflow:auto;border:1px solid var(--linha);border-radius:14px;min-height:0;-webkit-overflow-scrolling:touch;}
+table{border-collapse:separate;border-spacing:0;font-size:14px;width:max-content;min-width:100%;font-variant-numeric:tabular-nums;}
+th,td{padding:10px 11px;border-bottom:1px solid var(--linha);white-space:nowrap;text-align:right;background:#15171a;}
+th{position:sticky;top:0;background:#1e2126;z-index:2;font-weight:600;font-size:12px;color:var(--texto-suave);}
+th:first-child,td:first-child{position:sticky;left:0;text-align:left;z-index:1;background:#1a1d21;border-right:1px solid var(--linha);}
+th:first-child{z-index:3;background:#1e2126;}
+tr.stat td{background:#23272d;font-weight:600;}
+tr.stat td:first-child{background:#23272d;}
+tr.dim td{color:rgba(241,241,238,.38);}
+td.clic{cursor:pointer;}
+td button.x{min-height:32px;min-width:32px;padding:0;font-size:15px;border-radius:50%;background:transparent;color:var(--texto-suave);}
+.rodape{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.rodape button{flex:1 1 45%;min-height:50px;font-size:14px;border-radius:16px;padding:0 8px;}
+.vazio{padding:28px 16px;color:var(--texto-suave);text-align:center;white-space:normal;}
 
 /* ---------- configurações ---------- */
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;z-index:10;}
@@ -94,6 +117,8 @@ button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
 #sheet h2{margin:0 0 4px;font-size:18px;font-weight:600;}
 .opcao{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:16px;min-height:48px;border-bottom:1px solid var(--linha);}
 .opcao input{width:26px;height:26px;accent-color:#8fb4d9;}
+.opcao select{background:var(--botao);border:0;border-radius:12px;min-height:42px;padding:0 10px;font-size:15px;color:var(--texto);}
+.opcao select option{color:#000;}
 .opcao small{display:block;color:var(--texto-suave);font-size:13px;margin-top:2px;}
 .par{display:flex;gap:10px;}
 .par button{flex:1;font-size:16px;}
@@ -106,7 +131,10 @@ button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
 <section id="repouso" class="tela ativa">
   <div class="topo">
     <span id="wake"></span>
-    <button id="btnConfig" aria-label="Configurações">⚙︎</button>
+    <span class="dir">
+      <button id="btnHist">Histórico</button>
+      <button id="btnConfig" aria-label="Configurações">⚙︎</button>
+    </span>
   </div>
   <div class="contador">
     <div class="rotulo">EXAMES</div>
@@ -134,21 +162,48 @@ button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
   <div id="barra"></div>
   <div class="linha-pequena">
     <button id="btnPausa">Pausa</button>
-    <button id="btnEtapa">Etapa ›</button>
+    <button id="btnVolta" aria-label="Voltar etapa">‹ Etapa</button>
+    <button id="btnEtapa" aria-label="Avançar etapa">Etapa ›</button>
     <button id="btnComplexo">Complexo</button>
   </div>
   <button id="btnFim" class="grande">FINALIZAR</button>
+</section>
+
+<!-- ===== HISTÓRICO ===== -->
+<section id="hist" class="tela">
+  <div class="topo">
+    <button id="btnHistVoltar">‹ Voltar</button>
+    <span>Histórico</span>
+    <span style="width:70px"></span>
+  </div>
+  <div class="ctrl">
+    <select id="selPer" aria-label="Período"></select>
+    <label><input type="checkbox" id="chkComplexos"> Ignorar complexos nas médias</label>
+  </div>
+  <div class="resumo" id="histResumo"></div>
+  <div class="tabwrap" id="tabwrap"><table id="tabela"></table></div>
+  <div class="rodape">
+    <button id="btnCsv">Copiar CSV</button>
+    <button id="btnGpt">Copiar p/ ChatGPT</button>
+    <button id="btnShare">Compartilhar</button>
+    <button id="btnApagarLista">Apagar lista</button>
+  </div>
 </section>
 
 <!-- ===== CONFIGURAÇÕES ===== -->
 <div id="sheet">
   <div class="painel">
     <h2>Configurações</h2>
+    <label class="opcao"><span>Passagem de etapas<small>Manual: o tempo só avisa (bipe) e você passa a etapa. Automática: o relógio passa a etapa. Nos dois há botão de voltar</small></span>
+      <select id="cfgEtapas"><option value="manual">Manual</option><option value="auto">Automática</option></select></label>
     <label class="opcao"><span>Contar exame ao finalizar<small>Desligado: só o +/− altera o contador</small></span><input type="checkbox" id="cfgAuto"></label>
     <label class="opcao"><span>Manter tela acesa<small>Só enquanto o app está aberto</small></span><input type="checkbox" id="cfgWake"></label>
-    <label class="opcao"><span>Bipe na troca de etapa<small>Só com fone. Desligado por padrão</small></span><input type="checkbox" id="cfgBeep"></label>
+    <label class="opcao"><span>Bipe nos marcos de tempo<small>Avisa quando o relógio chega ao horário da próxima etapa. Só com fone. Desligado por padrão</small></span><input type="checkbox" id="cfgBeep"></label>
+    <label class="opcao"><span>Som do bipe<small>Toca uma prévia ao trocar</small></span>
+      <select id="cfgSom"><option value="1">Simples</option><option value="2">Duplo</option><option value="3">Sino</option></select></label>
+    <label class="opcao"><span>Volume do bipe<small>Além do volume do iPhone</small></span>
+      <select id="cfgVol"><option value="1">Baixo</option><option value="2">Médio</option><option value="3">Alto</option></select></label>
     <div class="par"><button id="btnTesteBipe">Testar bipe</button></div>
-    <div class="par"><button id="btnCopiar">Copiar CSV</button><button id="btnCompartilhar">Compartilhar CSV</button></div>
     <div class="par"><button id="btnPeriodo">Novo período</button><button id="btnFechar">Fechar</button></div>
     <div class="info" id="infoRegistros"></div>
   </div>
@@ -158,51 +213,66 @@ button:focus-visible{outline:2px solid var(--texto);outline-offset:2px;}
 /* =========================================================
    1. CONFIGURAÇÃO — edite aqui os protocolos (sem mexer no resto)
    ini = minuto em que a etapa começa. alvoMin = fim do alvo.
-   Depois do alvo: tela neutra, mostra só "18 min", "19 min"...
+   Depois do alvo: tela neutra, só "18 min", "19 min"...
+   Os nomes das etapas devem ser únicos dentro de cada protocolo.
    ========================================================= */
+const VERSAO = "0.3";
 const PROTOCOLOS = {
   "tc-torax": {
     nome: "TC Tórax",
     alvoMin: 18,
     etapas: [
-      { ini: 0,  nome: "CONTEXTO",             dica: "indicação · prévios · pergunta clínica",                   cor: "#26374f" },
-      { ini: 1,  nome: "PULMÕES",              dica: "achados principais · medir o relevante",                   cor: "#1d4b4b" },
-      { ini: 7,  nome: "MEDIASTINO",           dica: "linfonodos · coração · aorta · AP · esôfago · pleura",     cor: "#3a4a28" },
-      { ini: 10, nome: "OSSOS + ABDOME SUP.",  dica: "busca sistemática de incidentais",                         cor: "#473a5c" },
-      { ini: 12, nome: "COMPARAÇÃO + MEDIDAS", dica: "só o que muda interpretação ou conduta",                   cor: "#5a4a26" },
-      { ini: 15, nome: "CONCLUSÃO",            dica: "sintetizar · hierarquizar",                                cor: "#244d6b" },
-      { ini: 17, nome: "QUALITY CHECK",        dica: "lateralidade · medidas · achados esquecidos · coerência",  cor: "#5a2e4c" }
+      { ini: 0,  nome: "PULMÃO",       dica: "achados principais · medir o relevante",          cor: "#1d4b4b" },
+      { ini: 9,  nome: "PARTES MOLES", dica: "mediastino · pleura · ossos · abdome superior",   cor: "#3a4a28" },
+      { ini: 15, nome: "CONCLUSÃO",    dica: "comparar o necessário · sintetizar · conferir",   cor: "#244d6b" }
     ]
   }
 };
 const COR_REPOUSO = "#15171a";
 const COR_NEUTRA  = "#2b2e33";   // após o alvo e no modo Complexo
 const COR_PAUSA   = "#101113";
-const DESFAZER_MS = 7000;        // tempo da janela de desfazer/tags
+const DESFAZER_MS = 7000;        // janela de desfazer/tags após finalizar
+const VOLUMES = { 1: 0.25, 2: 0.6, 3: 0.95 };   // amplitude do bipe
 
 /* =========================================================
    2. ESTADO — tudo em localStorage (sobrevive a fechar o Safari)
-   exame.inicio guarda o horário de início; o tempo é sempre
-   calculado como agora − início − pausas (nunca por contagem).
+   exame: {inicio, pausadoEm, pausadoMs, complexo, idx, pin, ev}
+     idx = etapa atual; pin = true após "voltar etapa" (o relógio
+     deixa de empurrar a etapa até você avançar de novo)
+     ev  = [[ms_decorrido, idx], ...] cada troca de etapa
+   registro: {id, periodoId, protocolo, inicio, fim, durMs, pausadoMs,
+              complexo, complexidade, qc, contou, ev, nomes}
    ========================================================= */
-const KEY = "cronolaudo.v1";
+const KEY = "cronolaudo.v1";   // mesma chave da v0.1: dados antigos continuam
 function estadoPadrao() {
   return {
-    contador: 0,
-    periodoId: Date.now(),
-    protocolo: "tc-torax",
-    exame: null,   // {inicio, pausadoEm, pausadoMs, complexo, etapaMin}
-    registros: [], // histórico de exames finalizados
-    cfg: { auto: true, wake: true, beep: false }
+    contador: 0, periodoId: Date.now(), protocolo: "tc-torax",
+    exame: null, registros: [],
+    cfg: { auto: true, wake: true, beep: false, vol: 3, ignora: false, etapas: "manual", som: 1 }
   };
 }
 function carregar() {
   const base = estadoPadrao();
+  let s = base;
   try {
     const j = JSON.parse(localStorage.getItem(KEY));
-    if (j) return Object.assign(base, j, { cfg: Object.assign(base.cfg, j.cfg || {}) });
+    if (j) s = Object.assign(base, j, { cfg: Object.assign(base.cfg, j.cfg || {}) });
   } catch (e) {}
-  return base;
+  // protocolo único "tc-torax" (3 etapas); registros do antigo "tc-torax-3" passam a "tc-torax"
+  s.protocolo = "tc-torax";
+  s.registros.forEach(r => { if (r.protocolo === "tc-torax-3") r.protocolo = "tc-torax"; });
+  // migração: exame em andamento criado na v0.1
+  if (s.exame && s.exame.ev === undefined) {
+    s.exame.idx = s.exame.etapaMin || 0; s.exame.pin = false;
+    s.exame.ev = [[0, 0]];
+    if (s.exame.idx > 0) s.exame.ev.push([0, s.exame.idx]);
+  }
+  // exame em andamento de versão com mais etapas: recomeça a contagem de etapas (o tempo total é mantido)
+  const nEt = PROTOCOLOS[s.protocolo].etapas.length;
+  if (s.exame && (s.exame.idx >= nEt || s.exame.ev.some(e => e[1] >= nEt))) {
+    s.exame.idx = 0; s.exame.pin = false; s.exame.ev = [[0, 0]];
+  }
+  return s;
 }
 let S = carregar();
 function salvar() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
@@ -217,17 +287,47 @@ function decorridoMs(ex) {
   const ref = ex.pausadoEm != null ? ex.pausadoEm : Date.now();
   return Math.max(0, ref - ex.inicio - ex.pausadoMs);
 }
-// Etapa pelo relógio; "Etapa ›" manual só pode adiantar, nunca atrasar.
-function indiceEtapa(seg, ex) {
-  const et = P().etapas;
-  let i = 0;
-  for (let k = 0; k < et.length; k++) if (seg >= et[k].ini * 60) i = k;
-  return Math.max(i, ex.etapaMin || 0);
-}
 const mm = s => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 
+// Etapa que o relógio indica para um tempo decorrido (ms)
+function etapaDoRelogio(ms) {
+  const et = P().etapas, seg = ms / 1000;
+  let i = 0;
+  for (let k = 0; k < et.length; k++) if (seg >= et[k].ini * 60) i = k;
+  return i;
+}
+// MODO AUTOMÁTICO: avança a etapa conforme o relógio e registra o evento no horário previsto.
+// Não faz nada se a etapa estiver "fixada" por um voltar etapa. Retorna true se mudou.
+function sincronizar(ex, ms) {
+  if (S.cfg.etapas !== "auto" || ex.pin) return false;   // modo manual: o relógio nunca troca a etapa
+  const clk = etapaDoRelogio(ms);
+  if (clk <= ex.idx) return false;
+  const et = P().etapas;
+  for (let k = ex.idx + 1; k <= clk; k++) ex.ev.push([et[k].ini * 60000, k]);
+  ex.idx = clk; salvar();
+  return true;
+}
+// Tempo por etapa de um registro, em segundos (null = não passou por ela).
+// Definição: do início da etapa até o fim da última vez em que esteve nela.
+function temposEtapas(rec, nomes) {
+  const out = nomes.map(() => null);
+  if (!rec.ev || !rec.nomes) return out;
+  const n = rec.nomes.length, ini = Array(n).fill(null), fim = Array(n).fill(null);
+  for (let i = 0; i < rec.ev.length; i++) {
+    const t = rec.ev[i][0], idx = rec.ev[i][1];
+    const end = i + 1 < rec.ev.length ? Math.max(t, rec.ev[i + 1][0]) : rec.durMs;
+    if (ini[idx] === null || t < ini[idx]) ini[idx] = t;
+    if (fim[idx] === null || end > fim[idx]) fim[idx] = end;
+  }
+  rec.nomes.forEach((nm, i) => {
+    const j = nomes.indexOf(nm);
+    if (j >= 0 && ini[i] !== null) out[j] = Math.round(Math.max(0, fim[i] - ini[i]) / 1000);
+  });
+  return out;
+}
+
 /* =========================================================
-   4. TELA ACESA (Wake Lock) — vale só com o app visível;
+   4. TELA ACESA (Wake Lock) — só com o app visível;
    o iOS libera sozinho ao sair do app, sem mexer no Ajustes.
    ========================================================= */
 let wl = null, wakeEstado = "";
@@ -242,33 +342,55 @@ async function ligarWake() {
   mostrarWake();
 }
 function mostrarWake() {
-  const txt = wakeEstado === "ok" ? "tela acesa"
-            : wakeEstado === "" ? ""
-            : "⚠ tela pode apagar";
+  const txt = wakeEstado === "ok" ? "tela acesa" : wakeEstado === "" ? "" : "⚠ tela pode apagar";
   $("wake").textContent = txt;
-  $("wake2").textContent = wakeEstado === "ok" || wakeEstado === "" ? "" : txt; // no exame, só avisa se falhar
+  $("wake2").textContent = wakeEstado === "ok" || wakeEstado === "" ? "" : txt;
 }
+let semBeep = true;   // evita bipe espúrio ao reabrir o app com o marco já passado
+let marcoIdx = 0;     // maior marco de tempo (etapa do relógio) já atingido neste exame
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") { ligarWake(); tick(true); }
+  if (document.visibilityState === "visible") { semBeep = true; ligarWake(); tick(true); }
 });
 document.addEventListener("pointerdown", () => { if (!wl && S.cfg.wake) ligarWake(); }, { passive: true });
 
 /* =========================================================
    5. BIPE (opcional) — <audio> com WAV gerado em memória.
-   Toca só na troca de etapa; nunca ao passar do alvo.
+   Toca nos marcos de tempo da etapa seguinte (ex.: 9 e 15 min); nunca ao passar do alvo.
    ========================================================= */
 let beepEl = null;
+// Três sons (escolha em ⚙︎). Cada um gera amostras entre -1 e 1; o volume escala a amplitude.
+//   1 Simples = tom único, suave (o som original)   2 Duplo = dois toques curtos   3 Sino = duas notas com decaimento
+function amostrasSom(som, sr) {
+  const n = Math.floor(sr * (som === 3 ? 0.8 : 0.36)), a = new Float32Array(n);
+  const somaTom = (f, t0, len, atk, rel) => {          // tom senoidal com ataque/liberação curtos
+    for (let i = Math.floor(t0 * sr); i < Math.min(n, Math.floor((t0 + len) * sr)); i++) {
+      const t = i / sr - t0;
+      a[i] += Math.sin(2 * Math.PI * f * t) * Math.min(1, t / atk) * Math.min(1, (len - t) / rel);
+    }
+  };
+  const somaSino = (f, t0) => {                        // tom com decaimento exponencial
+    for (let i = Math.floor(t0 * sr); i < n; i++) {
+      const t = i / sr - t0;
+      a[i] += (Math.sin(2 * Math.PI * f * t) + 0.35 * Math.sin(4 * Math.PI * f * t)) * Math.min(1, t / 0.005) * Math.exp(-5 * t);
+    }
+  };
+  if (som === 2) { somaTom(700, 0, 0.12, 0.01, 0.04); somaTom(700, 0.2, 0.12, 0.01, 0.04); }
+  else if (som === 3) { somaSino(784, 0); somaSino(1047, 0.18); }
+  else somaTom(800, 0, 0.35, 0.04, 0.09);
+  let pico = 0;
+  for (let i = 0; i < n; i++) pico = Math.max(pico, Math.abs(a[i]));
+  if (pico > 0) for (let i = 0; i < n; i++) a[i] /= pico;
+  return a;
+}
 function criarBeep() {
-  const sr = 22050, n = Math.floor(sr * 0.22), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const amp = VOLUMES[S.cfg.vol] || 0.95, sr = 22050, am = amostrasSom(S.cfg.som || 1, sr), n = am.length;
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
   const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
   str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt ");
   v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
   v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
   str(36, "data"); v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) {
-    const t = i / sr, env = Math.min(1, i / (sr * .03)) * Math.min(1, (n - i) / (sr * .06));
-    v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * 600 * t) * env * 0.3 * 32767, true);
-  }
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, am[i] * amp * 32767, true);
   beepEl = new Audio(URL.createObjectURL(new Blob([buf], { type: "audio/wav" })));
   beepEl.preload = "auto";
 }
@@ -278,6 +400,10 @@ function liberarAudio() {            // chamado num toque do usuário (exigênci
   beepEl.muted = true;
   beepEl.play().then(() => { beepEl.pause(); beepEl.currentTime = 0; beepEl.muted = false; }).catch(() => { beepEl.muted = false; });
 }
+function testarBipe() {              // prévia do som/volume escolhidos, mesmo com o bipe desligado
+  const b = S.cfg.beep; S.cfg.beep = true; liberarAudio();
+  setTimeout(() => { tocarBeep(); S.cfg.beep = b; }, 250);
+}
 function tocarBeep() {
   if (!S.cfg.beep) return;
   if (!beepEl) criarBeep();
@@ -285,14 +411,14 @@ function tocarBeep() {
 }
 
 /* =========================================================
-   6. RENDER
+   6. RENDER — telas de repouso e exame
    ========================================================= */
-let ultimaChave = "", ultimoIdx = -1, barraPronta = false;
+let ultimaChave = "", barraPronta = false;
 
 function mostrar(tela) {
-  $("repouso").classList.toggle("ativa", tela === "repouso");
-  $("exame").classList.toggle("ativa", tela === "exame");
+  ["repouso", "exame", "hist"].forEach(t => $(t).classList.toggle("ativa", t === tela));
   if (tela === "repouso") { setBg(COR_REPOUSO); renderRepouso(); }
+  else if (tela === "hist") { setBg(COR_REPOUSO); renderHist(); }
   else { barraPronta = false; ultimaChave = ""; tick(true); }
 }
 function setBg(cor) {
@@ -320,26 +446,30 @@ function tick(forcar) {
   if (!barraPronta) montarBarra();
 
   const ms = decorridoMs(ex), seg = Math.floor(ms / 1000);
-  const alvoSeg = P().alvoMin * 60;
   const pausado = ex.pausadoEm != null;
-  const apos = seg >= alvoSeg;
+  const apos = seg >= P().alvoMin * 60;
   const neutro = ex.complexo || apos;
-  const idx = indiceEtapa(seg, ex);
-  const et = P().etapas[idx];
 
-  // texto principal: mm:ss até o alvo; só minutos depois (ou em Complexo)
+  const manual = S.cfg.etapas !== "auto";
+  sincronizar(ex, ms);   // só age no modo automático
+
+  // Bipe nos marcos do relógio, nos dois modos. No manual ele só avisa: quem troca a etapa é você.
+  const clk = etapaDoRelogio(ms);
+  if (clk > marcoIdx && !semBeep && !pausado && !neutro) tocarBeep();
+  marcoIdx = Math.max(marcoIdx, clk);
+  semBeep = false;
+
+  const idx = ex.idx, et = P().etapas[idx];
+  const suave = n => n.charAt(0) + n.slice(1).toLowerCase();
   const tempoTxt = neutro ? Math.floor(seg / 60) + " min" : mm(seg);
   const nomeTxt  = pausado ? "PAUSADO" : ex.complexo ? "COMPLEXO" : apos ? "" : et.nome;
-  const dicaTxt  = pausado || neutro ? "" : et.dica;
+  // no manual, mesmo na tela neutra aparece (apagada) a etapa atual: quem a controla é você
+  const dicaTxt  = pausado ? "" : neutro ? (manual ? "etapa: " + suave(et.nome) : "") : et.dica;
   const cor      = pausado ? COR_PAUSA : neutro ? COR_NEUTRA : et.cor;
 
-  const chave = [tempoTxt, nomeTxt, dicaTxt, cor, pausado, ex.complexo, neutro, seg].join("|");
+  const chave = [tempoTxt, nomeTxt, dicaTxt, cor, pausado, ex.complexo, neutro, seg, idx, manual].join("|");
   if (!forcar && chave === ultimaChave) return;
   ultimaChave = chave;
-
-  // bipe só na troca de etapa dentro do alvo, sem pausa e fora do modo Complexo
-  if (!pausado && !neutro && ultimoIdx >= 0 && idx !== ultimoIdx) tocarBeep();
-  ultimoIdx = neutro ? -1 : idx;
 
   $("tempo").textContent = tempoTxt;
   $("tempo").classList.toggle("longo", tempoTxt.length > 5);
@@ -357,18 +487,21 @@ function tick(forcar) {
 
   $("btnPausa").textContent = pausado ? "Retomar" : "Pausa";
   $("btnComplexo").classList.toggle("on", !!ex.complexo);
-  $("btnEtapa").style.visibility = (neutro || pausado || idx >= P().etapas.length - 1) ? "hidden" : "visible";
+  const nav = pausado || (!manual && neutro);   // no manual, o avanço continua disponível após o alvo
+  $("btnVolta").style.visibility = (nav || idx <= 0) ? "hidden" : "visible";
+  $("btnEtapa").style.visibility = (nav || idx >= P().etapas.length - 1) ? "hidden" : "visible";
+  $("exame").querySelector(".linha-pequena").classList.toggle("manual", manual);
 }
 
 /* =========================================================
-   7. AÇÕES
+   7. AÇÕES — exame
    ========================================================= */
 let undoInfo = null, snackTimer = null;
 
 function novoExame() {
   esconderSnack();
-  S.exame = { inicio: Date.now(), pausadoEm: null, pausadoMs: 0, complexo: false, etapaMin: 0 };
-  salvar(); ultimoIdx = 0;
+  S.exame = { inicio: Date.now(), pausadoEm: null, pausadoMs: 0, complexo: false, idx: 0, pin: false, ev: [[0, 0]] };
+  salvar(); semBeep = true; marcoIdx = 0;
   mostrar("exame"); ligarWake(); liberarAudio();
 }
 function pausar() {
@@ -378,13 +511,23 @@ function pausar() {
   salvar(); tick(true);
 }
 function alternarComplexo() { const ex = S.exame; if (!ex) return; ex.complexo = !ex.complexo; salvar(); tick(true); }
-function avancarEtapa() {
-  const ex = S.exame; if (!ex) return;
-  const seg = Math.floor(decorridoMs(ex) / 1000);
-  ex.etapaMin = Math.min(indiceEtapa(seg, ex) + 1, P().etapas.length - 1);
-  ultimoIdx = ex.etapaMin;            // avanço manual não gera bipe
+
+// Avançar manualmente: só vale se ainda há etapa à frente. Solta o "pin" quando alcança o relógio.
+function proxEtapa() {
+  const ex = S.exame; if (!ex || ex.idx >= P().etapas.length - 1) return;
+  const ms = decorridoMs(ex);
+  ex.idx += 1; ex.ev.push([ms, ex.idx]);
+  if (ex.idx >= etapaDoRelogio(ms)) ex.pin = false;
   salvar(); tick(true);
 }
+// Voltar etapa: fixa a etapa anterior até você avançar de novo (o relógio não a empurra).
+function voltarEtapa() {
+  const ex = S.exame; if (!ex || ex.idx <= 0) return;
+  const ms = decorridoMs(ex);
+  ex.idx -= 1; ex.ev.push([ms, ex.idx]); ex.pin = true;
+  salvar(); tick(true);
+}
+
 function finalizar() {
   const ex = S.exame; if (!ex) return;
   const agora = Date.now();
@@ -393,11 +536,11 @@ function finalizar() {
     id: agora, periodoId: S.periodoId, protocolo: S.protocolo,
     inicio: ex.inicio, fim: agora, durMs: decorridoMs(ex), pausadoMs,
     complexo: !!ex.complexo, complexidade: ex.complexo ? "complexo" : "", qc: false,
-    contou: !!S.cfg.auto
+    contou: !!S.cfg.auto, ev: ex.ev, nomes: P().etapas.map(e => e.nome), modo: S.cfg.etapas
   };
   S.registros.push(rec);
   if (S.cfg.auto) S.contador += 1;
-  undoInfo = { id: rec.id, etapaMin: ex.etapaMin || 0 };
+  undoInfo = { id: rec.id, pin: !!ex.pin };
   S.exame = null; salvar();
   mostrar("repouso");
   mostrarSnack(rec);
@@ -409,10 +552,9 @@ function desfazer() {
   const rec = S.registros[i];
   S.registros.splice(i, 1);
   if (rec.contou) S.contador = Math.max(0, S.contador - 1);
-  // retoma como se nunca tivesse parado: o tempo continua de onde estava
   S.exame = { inicio: Date.now() - rec.durMs - rec.pausadoMs, pausadoEm: null, pausadoMs: rec.pausadoMs,
-              complexo: rec.complexo, etapaMin: undoInfo.etapaMin };
-  undoInfo = null; esconderSnack(); salvar(); ultimoIdx = -1;
+              complexo: rec.complexo, idx: rec.ev[rec.ev.length - 1][1], pin: undoInfo.pin, ev: rec.ev };
+  undoInfo = null; esconderSnack(); salvar(); semBeep = true;
   mostrar("exame"); ligarWake();
 }
 
@@ -447,67 +589,192 @@ function editarContador() {
   if (!isNaN(n) && n >= 0) { S.contador = n; salvar(); renderRepouso(); }
 }
 
-/* ---- CSV ---- */
+/* =========================================================
+   8. HISTÓRICO — tabela, médias, edição de tags e exclusão
+   ========================================================= */
+let histPer = null;   // filtro da tela: período (id) ou "todos"
+const TIPOS = ["", "simples", "intermediário", "complexo"];
+const TIPO_ROTULO = { "": "—", simples: "Simples", "intermediário": "Interm.", complexo: "Complexo" };
+const fmt = s => s == null ? "—" : mm(Math.round(s));
+const media = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const mediana = a => {
+  if (!a.length) return null;
+  const b = a.slice().sort((x, y) => x - y), m = Math.floor(b.length / 2);
+  return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
+};
+const pad2 = n => String(n).padStart(2, "0");
+const dataCurta = ms => { const d = new Date(ms); return pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); };
+const dataCompleta = ms => { const d = new Date(ms); return pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); };
+
+// Registros visíveis conforme os filtros, mais novos primeiro
+function listaHist() {
+  return S.registros
+    .filter(r => histPer === "todos" || String(r.periodoId) === String(histPer))
+    .sort((a, b) => b.inicio - a.inicio);
+}
+
+function renderHist() {
+  // filtro de período
+  if (histPer === null) histPer = S.periodoId;
+
+  const periodos = {};
+  S.registros.forEach(r => { periodos[r.periodoId] = (periodos[r.periodoId] || 0) + 1; });
+  if (!(S.periodoId in periodos)) periodos[S.periodoId] = 0;
+  const ids = Object.keys(periodos).map(Number).sort((a, b) => b - a);
+  $("selPer").innerHTML = '<option value="todos">Todos os períodos</option>' +
+    ids.map(id => '<option value="' + id + '">' + (id === S.periodoId ? "Período atual · " : "") + dataCurta(id) + " (" + periodos[id] + ")</option>").join("");
+  if (histPer !== "todos" && !(histPer in periodos)) histPer = S.periodoId;
+  $("selPer").value = String(histPer);
+  $("chkComplexos").checked = !!S.cfg.ignora;
+
+  // dados
+  const nomes = P().etapas.map(e => e.nome);
+  const lista = listaHist();
+  const linhas = lista.map(r => ({ r, t: temposEtapas(r, nomes), cx: r.complexidade === "complexo" }));
+  const usadas = S.cfg.ignora ? linhas.filter(l => !l.cx) : linhas;
+  const fora = linhas.length - usadas.length;
+
+  $("histResumo").textContent = linhas.length
+    ? usadas.length + " exame(s) no cálculo" + (fora ? " · " + fora + " complexo(s) fora das médias" : "") + " · toque em Tipo/QC para editar"
+    : "";
+
+  // tabela
+  const wrap = $("tabwrap"), sx = wrap.scrollLeft, sy = wrap.scrollTop;
+  if (!linhas.length) {
+    $("tabela").innerHTML = '<tr><td class="vazio">Nenhum exame neste período.</td></tr>';
+    return;
+  }
+  const colStats = fn => {
+    const tot = usadas.map(l => l.r.durMs / 1000);
+    const est = nomes.map((_, j) => usadas.map(l => l.t[j]).filter(x => x != null));
+    return '<td>' + fmt(fn(tot)) + '</td>' + est.map(a => '<td>' + fmt(fn(a)) + '</td>').join("") + '<td></td><td></td><td></td>';
+  };
+  let h = '<thead><tr><th>Início</th><th>Total</th>' + nomes.map(n => '<th>' + n + '</th>').join("") + '<th>Tipo</th><th>QC</th><th></th></tr></thead><tbody>';
+  h += '<tr class="stat"><td>Média</td>' + colStats(media) + '</tr>';
+  h += '<tr class="stat"><td>Mediana</td>' + colStats(mediana) + '</tr>';
+  linhas.forEach(l => {
+    const dim = S.cfg.ignora && l.cx ? ' class="dim"' : "";
+    h += '<tr' + dim + '><td>' + dataCurta(l.r.inicio) + '</td><td>' + fmt(l.r.durMs / 1000) + '</td>' +
+         l.t.map(x => '<td>' + fmt(x) + '</td>').join("") +
+         '<td class="clic" data-tipo="' + l.r.id + '">' + TIPO_ROTULO[l.r.complexidade || ""] + '</td>' +
+         '<td class="clic" data-qc="' + l.r.id + '">' + (l.r.qc ? "✓" : "—") + '</td>' +
+         '<td><button class="x" data-del="' + l.r.id + '" aria-label="Apagar">✕</button></td></tr>';
+  });
+  $("tabela").innerHTML = h + '</tbody>';
+  wrap.scrollLeft = sx; wrap.scrollTop = sy;
+}
+
+function acharReg(id) { return S.registros.find(r => String(r.id) === String(id)); }
+function cliqueTabela(e) {
+  const del = e.target.closest("[data-del]"), tipo = e.target.closest("[data-tipo]"), qc = e.target.closest("[data-qc]");
+  if (del) {
+    const r = acharReg(del.dataset.del); if (!r) return;
+    if (!confirm("Apagar o exame das " + dataCurta(r.inicio) + "?\nO contador de exames não muda.")) return;
+    S.registros = S.registros.filter(x => x !== r); salvar(); renderHist();
+  } else if (tipo) {
+    const r = acharReg(tipo.dataset.tipo); if (!r) return;
+    r.complexidade = TIPOS[(TIPOS.indexOf(r.complexidade || "") + 1) % TIPOS.length]; salvar(); renderHist();
+  } else if (qc) {
+    const r = acharReg(qc.dataset.qc); if (!r) return;
+    r.qc = !r.qc; salvar(); renderHist();
+  }
+}
+function apagarLista() {
+  const lista = listaHist(); if (!lista.length) return;
+  if (!confirm("Apagar " + lista.length + " exame(s) desta lista?\nNão dá para desfazer. O contador de exames não muda.")) return;
+  const ids = new Set(lista.map(r => r.id));
+  S.registros = S.registros.filter(r => !ids.has(r.id)); salvar(); renderHist();
+}
+
+// CSV (vírgula) com tempos em mm:ss, mais antigo primeiro.
 function gerarCSV() {
-  const cab = ["periodo", "seq", "inicio", "fim", "duracao_s", "pausa_s", "protocolo", "complexidade", "marcou_complexo", "qc_pegou_algo"];
-  const seq = {};
-  const linhas = S.registros.map(r => {
-    seq[r.periodoId] = (seq[r.periodoId] || 0) + 1;
-    return [new Date(r.periodoId).toISOString(), seq[r.periodoId], new Date(r.inicio).toISOString(), new Date(r.fim).toISOString(),
-            Math.round(r.durMs / 1000), Math.round(r.pausadoMs / 1000), r.protocolo, r.complexidade, r.complexo ? 1 : 0, r.qc ? 1 : 0].join(",");
+  const nomes = P().etapas.map(e => e.nome);
+  const asc = listaHist().slice().reverse();
+  const cab = ["Início", "Total"].concat(nomes, ["Tipo", "QC"]);
+  const linhas = asc.map(r => {
+    const t = temposEtapas(r, nomes);
+    return [dataCompleta(r.inicio), mm(Math.round(r.durMs / 1000))]
+      .concat(t.map(x => x == null ? "" : mm(x)), [TIPO_ROTULO[r.complexidade || ""].replace("—", ""), r.qc ? "sim" : ""]).join(",");
   });
   return [cab.join(",")].concat(linhas).join("\n");
 }
-async function copiarCSV() {
-  const t = gerarCSV();
-  try { await navigator.clipboard.writeText(t); aviso("CSV copiado"); }
-  catch (e) { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); document.execCommand("copy"); a.remove(); aviso("CSV copiado"); }
+// Prompt + CSV: cola no ChatGPT e ele devolve a tabela formatada com médias.
+function gerarPromptGPT() {
+  const nomes = P().etapas.map(e => e.nome).join(", ");
+  return "Abaixo estão os dados do meu cronômetro de laudos de TC de tórax, em CSV (um exame por linha).\n" +
+    "Colunas: Início (dd/mm/aaaa hh:mm), Total (mm:ss), uma coluna de tempo por etapa (" + nomes + ", em mm:ss; vazio = não passou pela etapa), " +
+    "Tipo (Simples, Interm. ou Complexo; vazio = não classificado) e QC (\"sim\" quando o quality check encontrou algo).\n\n" +
+    "Faça o seguinte:\n" +
+    "1. Monte uma tabela bem formatada (Markdown), um exame por linha, com as mesmas colunas e na mesma ordem.\n" +
+    "2. Logo abaixo, acrescente linhas de Média e Mediana do Total e de cada etapa, em duas versões: com todos os exames e sem os de Tipo Complexo.\n" +
+    "3. Não invente nem corrija dados; onde estiver vazio, escreva \"—\".\n" +
+    "4. Termine com 2 a 3 observações objetivas (por exemplo, qual etapa consome mais tempo e a variação entre exames), sem julgar desempenho.\n\n" +
+    "Dados:\n" + gerarCSV();
 }
+async function copiarTexto(t, msg) {
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); document.execCommand("copy"); a.remove(); }
+  $("histResumo").textContent = msg;
+  setTimeout(renderHist, 3000);
+}
+const copiarCSV = () => copiarTexto(gerarCSV(), "CSV copiado.");
+const copiarGPT = () => copiarTexto(gerarPromptGPT(), "Copiado com instruções. Cole no ChatGPT.");
 async function compartilharCSV() {
-  const t = gerarCSV();
-  if (navigator.share) { try { await navigator.share({ title: "Laudo CSV", text: t }); } catch (e) {} }
+  if (navigator.share) { try { await navigator.share({ title: "Histórico de laudos", text: gerarCSV() }); } catch (e) {} }
   else copiarCSV();
 }
-function aviso(m) { $("infoRegistros").textContent = m; setTimeout(infoReg, 2000); }
-function infoReg() { $("infoRegistros").textContent = S.registros.length + " exames registrados no total."; }
 
-/* ---- configurações ---- */
+/* =========================================================
+   9. CONFIGURAÇÕES
+   ========================================================= */
+function infoReg() { $("infoRegistros").textContent = "v" + VERSAO + " · " + S.registros.length + " exames registrados no total."; }
 function abrirConfig() {
   $("cfgAuto").checked = S.cfg.auto; $("cfgWake").checked = S.cfg.wake; $("cfgBeep").checked = S.cfg.beep;
+  $("cfgVol").value = String(S.cfg.vol);
+  $("cfgEtapas").value = S.cfg.etapas; $("cfgSom").value = String(S.cfg.som);
   infoReg(); $("sheet").classList.add("aberto");
 }
 function novoPeriodo() {
   if (!confirm("Zerar o contador e começar um novo período? O histórico é mantido.")) return;
-  S.contador = 0; S.periodoId = Date.now(); salvar(); renderRepouso(); $("sheet").classList.remove("aberto");
+  S.contador = 0; S.periodoId = Date.now(); histPer = null; salvar(); renderRepouso(); $("sheet").classList.remove("aberto");
 }
 
 /* =========================================================
-   8. LIGAÇÃO DOS BOTÕES E INICIALIZAÇÃO
+   10. LIGAÇÃO DOS BOTÕES E INICIALIZAÇÃO
    ========================================================= */
 $("btnNovo").onclick = novoExame;
 $("btnFim").onclick = finalizar;
 $("btnPausa").onclick = pausar;
 $("btnComplexo").onclick = alternarComplexo;
-$("btnEtapa").onclick = avancarEtapa;
+$("btnEtapa").onclick = proxEtapa;
+$("btnVolta").onclick = voltarEtapa;
 $("btnMenos").onclick = () => ajustar(-1);
 $("btnMais").onclick = () => ajustar(1);
 $("numero").onclick = editarContador;
 $("btnConfig").onclick = abrirConfig;
 $("btnFechar").onclick = () => $("sheet").classList.remove("aberto");
-$("btnCopiar").onclick = copiarCSV;
-$("btnCompartilhar").onclick = compartilharCSV;
 $("btnPeriodo").onclick = novoPeriodo;
-$("btnTesteBipe").onclick = () => { const b = S.cfg.beep; S.cfg.beep = true; liberarAudio(); setTimeout(() => { tocarBeep(); S.cfg.beep = b; }, 250); };
+$("btnHist").onclick = () => { esconderSnack(); histPer = S.periodoId; mostrar("hist"); };
+$("btnHistVoltar").onclick = () => mostrar("repouso");
+$("selPer").onchange = e => { histPer = e.target.value === "todos" ? "todos" : Number(e.target.value); renderHist(); };
+$("chkComplexos").onchange = e => { S.cfg.ignora = e.target.checked; salvar(); renderHist(); };
+$("tabela").addEventListener("click", cliqueTabela);
+$("btnCsv").onclick = copiarCSV;
+$("btnGpt").onclick = copiarGPT;
+$("btnShare").onclick = compartilharCSV;
+$("btnApagarLista").onclick = apagarLista;
+$("btnTesteBipe").onclick = testarBipe;
 $("cfgAuto").onchange = e => { S.cfg.auto = e.target.checked; salvar(); };
 $("cfgWake").onchange = e => { S.cfg.wake = e.target.checked; salvar(); if (e.target.checked) ligarWake(); else { if (wl) wl.release(); wakeEstado = ""; mostrarWake(); } };
 $("cfgBeep").onchange = e => { S.cfg.beep = e.target.checked; salvar(); };
+$("cfgVol").onchange = e => { S.cfg.vol = Number(e.target.value); beepEl = null; salvar(); testarBipe(); };
+$("cfgSom").onchange = e => { S.cfg.som = Number(e.target.value); beepEl = null; salvar(); testarBipe(); };
+$("cfgEtapas").onchange = e => { S.cfg.etapas = e.target.value; salvar(); };
 
-// Duplo toque rápido não deve dar zoom nem selecionar texto
 document.addEventListener("dblclick", e => e.preventDefault());
 
 // Retoma exame em andamento (fechou o Safari, bloqueou o iPhone, etc.)
-if (S.exame) { ultimoIdx = -1; mostrar("exame"); }
-else mostrar("repouso");
+if (S.exame) mostrar("exame"); else mostrar("repouso");
 ligarWake();
 setInterval(() => tick(false), 250);
 

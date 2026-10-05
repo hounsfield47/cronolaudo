@@ -1,6 +1,6 @@
 // Service Worker: rede primeiro (pega atualizações), cache como reserva (funciona offline).
 // Ao publicar uma nova versão, basta subir os arquivos; troque CACHE se quiser forçar limpeza.
-const CACHE = "cronolaudo-v1";
+const CACHE = "cronolaudo-v4";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-180.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
